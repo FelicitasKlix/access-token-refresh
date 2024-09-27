@@ -1,8 +1,17 @@
 import streamlit as st
+import requests
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from google.cloud import functions_v1
+from datetime import datetime, timedelta
+import json
 
-st.title("Meta Developers App Access Token Refresh")
-st.write("This app does the following:")
-st.write("1. Creates the URL to generate the user access token for a Meta Developers App (short-lived-token)")
-st.write("2. Makes the API request with that token to generate the long-lived-token")
-st.write("3. Updates the long-lived-token in the exectuion environment variable of a GCP function")
-st.write("4. Adds to Google Calendar an event the day before the expire date of the long-lived-token (usually 60 days)")
+# Cargar las aplicaciones de Facebook desde los secrets
+apps = st.secrets["facebook_apps"]
+
+# Configuración de Streamlit
+st.set_page_config(layout="wide")
+st.title("Actualizador de Token de Facebook")
+
+# Menú lateral para seleccionar la app
+selected_app = st.sidebar.selectbox("Selecciona una aplicación", list(apps.keys()))
