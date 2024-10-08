@@ -82,7 +82,12 @@ def create_calendar_event(reminder_date, calendar_ids):
         )
 
         # Generar URL de autorización
-        auth_url, _ = flow.authorization_url(prompt='consent')
+        #auth_url, _ = flow.authorization_url(prompt='consent')
+        auth_url, _ = flow.authorization_url(
+            prompt='consent',
+            redirect_uri="https://meta-access-token-refresh.streamlit.app/_oauth-callback"  # Redefinir aquí
+)
+
         
         # Mostrar el link de autorización al usuario
         st.markdown(f"[Click aquí para autorizar la aplicación]({auth_url})")
