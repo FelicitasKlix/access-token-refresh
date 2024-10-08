@@ -58,8 +58,10 @@ def create_calendar_event(reminder_date, calendar_ids):
             "token_uri": st.secrets["calendar_api"]["token_uri"],
             "auth_provider_x509_cert_url": st.secrets["calendar_api"]["auth_provider_x509_cert_url"],
             "client_secret": st.secrets["calendar_api"]["client_secret"],
-            "redirect_uris": st.secrets["calendar_api"]["redirect_uris"],
-            "javascript_origins": st.secrets["calendar_api"]["javascript_origins"]
+            #"redirect_uris": st.secrets["calendar_api"]["redirect_uris"],
+            "redirect_uris": ["https://meta-access-token-refresh.streamlit.app", "https://meta-access-token-refresh.streamlit.app/_oauth-callback"],
+            #"javascript_origins": st.secrets["calendar_api"]["javascript_origins"]
+            "javascript_origins": ["https://meta-access-token-refresh.streamlit.app"]
         }
     }
 
