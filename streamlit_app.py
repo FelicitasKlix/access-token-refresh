@@ -58,8 +58,8 @@ def create_calendar_event(reminder_date, calendar_ids):
             "token_uri": st.secrets["calendar_api"]["token_uri"],
             "auth_provider_x509_cert_url": st.secrets["calendar_api"]["auth_provider_x509_cert_url"],
             "client_secret": st.secrets["calendar_api"]["client_secret"],
-            "redirect_uris": ["https://meta-access-token-refresh.streamlit.app/_oauth-callback"],
-            "javascript_origins": ["https://meta-access-token-refresh.streamlit.app"]
+            "redirect_uris": st.secrets["calendar_api"]["redirect_uris"],
+            "javascript_origins": st.secrets["calendar_api"]["javascript_origins"]
         }
     }
 
@@ -74,7 +74,8 @@ def create_calendar_event(reminder_date, calendar_ids):
         flow = Flow.from_client_secrets_file(
             temp.name,
             scopes=SCOPES,
-            redirect_uri='https://meta-access-token-refresh.streamlit.app/_oauth-callback'
+            #redirect_uri='https://meta-access-token-refresh.streamlit.app/_oauth-callback'
+            redirect_uri= st.secrets["calendar_api"]["redirect_uris"][1]
         )
 
         # Generar URL de autorización
