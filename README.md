@@ -15,5 +15,9 @@ To run the Streamlit app, use the following command:
 ```bash
 streamlit run streamlit_app.py
 ```
+or
 
+```bash
+python -m streamlit run streamlit_app.py 
+```
 ## App URL
