@@ -48,6 +48,7 @@ def create_calendar_event(reminder_date, calendar_ids):
     # Verificar si ya tenemos credenciales en la sesión
     if 'calendar_credentials' not in st.session_state:
         st.session_state.calendar_credentials = None
+
     # Crear la estructura correcta del diccionario
     client_secrets = {
         "web": {
@@ -57,7 +58,7 @@ def create_calendar_event(reminder_date, calendar_ids):
             "token_uri": st.secrets["calendar_api"]["token_uri"],
             "auth_provider_x509_cert_url": st.secrets["calendar_api"]["auth_provider_x509_cert_url"],
             "client_secret": st.secrets["calendar_api"]["client_secret"],
-            "redirect_uris": ["https://meta-access-token-refresh.streamlit.app/"],  # Corregido
+            "redirect_uris": ["https://meta-access-token-refresh.streamlit.app/_oauth-callback"],
             "javascript_origins": ["https://meta-access-token-refresh.streamlit.app"]
         }
     }
@@ -73,66 +74,69 @@ def create_calendar_event(reminder_date, calendar_ids):
         flow = Flow.from_client_secrets_file(
             temp.name,
             scopes=SCOPES,
-            redirect_uri="https://meta-access-token-refresh.streamlit.app/"  # Corregido
+            redirect_uri="https://meta-access-token-refresh.streamlit.app/_oauth-callback"
         )
 
-        # Generar URL de autorización
-        auth_url, state = flow.authorization_url(
-            access_type='offline',
-            include_granted_scopes='true',
-            prompt='consent'
-        )
-
-        # Almacenar el estado en la sesión
-        st.session_state['oauth_state'] = state
-        
-        # Mostrar el link de autorización al usuario
-        st.markdown(f"[Click aquí para autorizar la aplicación]({auth_url})")
-        
-        # Esperar el código de autorización del usuario
-        code = st.text_input("Ingresa el código de autorización:")
-        
-        if code:
+        # Verificar si tenemos un código en la URL
+        query_params = st.experimental_get_query_params()
+        if "code" in query_params:
             try:
-                flow.fetch_token(code=code)
-                creds = flow.credentials
-
-                # Usar las credenciales para crear el servicio
-                service = build('calendar', 'v3', credentials=creds)
-                
-                # Crear el evento
-                year = reminder_date.year
-                month = reminder_date.month
-                day = reminder_date.day
-                
-                start_date = f"{year}-{month:02d}-{day:02d}"
-                end_date = f"{year}-{month:02d}-{day:02d}"
-                
-                event = {
-                    'summary': 'Facebook Token Refresh Reminder',
-                    'description': 'Es necesario refrescar el token de Facebook',
-                    'start': {
-                        'date': start_date,
-                        'timeZone': 'America/Los_Angeles',
-                    },
-                    'end': {
-                        'date': end_date,
-                        'timeZone': 'America/Los_Angeles',
-                    },
-                    'colorId': '4',
-                }
-                
-                results = []
-                for calendar_id in calendar_ids:
-                    try:
-                        event_result = service.events().insert(calendarId=calendar_id, body=event).execute()
-                        results.append(f"Evento creado en {calendar_id}")
-                    except Exception as e:
-                        results.append(f"Error al crear evento en {calendar_id}: {str(e)}")
-                
-                return results
+                flow.fetch_token(code=query_params["code"][0])
+                st.session_state.calendar_credentials = flow.credentials
+                # Limpiar la URL
+                st.experimental_set_query_params()
             except Exception as e:
+                st.error(f"Error al obtener el token: {str(e)}")
                 return [f"Error en la autenticación: {str(e)}"]
+
+        if not st.session_state.calendar_credentials:
+            auth_url, state = flow.authorization_url(
+                access_type='offline',
+                include_granted_scopes='true',
+                prompt='consent'
+            )
+            st.markdown(f"[Click aquí para autorizar la aplicación]({auth_url})")
+            return ["Esperando autorización..."]
+        
+        try:
+            service = build('calendar', 'v3', credentials=st.session_state.calendar_credentials)
+
+            # Usar las credenciales para crear el servicio
+            #service = build('calendar', 'v3', credentials=creds)
+            
+            # Crear el evento
+            year = reminder_date.year
+            month = reminder_date.month
+            day = reminder_date.day
+            
+            start_date = f"{year}-{month:02d}-{day:02d}"
+            end_date = f"{year}-{month:02d}-{day:02d}"
+            
+            event = {
+                'summary': 'Facebook Token Refresh Reminder',
+                'description': 'Es necesario refrescar el token de Facebook',
+                'start': {
+                    'date': start_date,
+                    'timeZone': 'America/Los_Angeles',
+                },
+                'end': {
+                    'date': end_date,
+                    'timeZone': 'America/Los_Angeles',
+                },
+                'colorId': '4',
+            }
+            
+            results = []
+            for calendar_id in calendar_ids:
+                try:
+                    event_result = service.events().insert(calendarId=calendar_id, body=event).execute()
+                    results.append(f"Evento creado en {calendar_id}")
+                except Exception as e:
+                    results.append(f"Error al crear evento en {calendar_id}: {str(e)}")
+            
+            return results
+        except Exception as e:
+            return [f"Error en la autenticación: {str(e)}"]
         
         return ["Esperando autorización..."]
 
