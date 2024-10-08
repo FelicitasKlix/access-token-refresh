@@ -77,7 +77,8 @@ def create_calendar_event(reminder_date, calendar_ids):
             temp.name,
             scopes=SCOPES,
             #redirect_uri='https://meta-access-token-refresh.streamlit.app/_oauth-callback'
-            redirect_uri= st.secrets["calendar_api"]["redirect_uris"][1]
+            #redirect_uri= st.secrets["calendar_api"]["redirect_uris"][1]
+            redirect_uri= "https://meta-access-token-refresh.streamlit.app/_oauth-callback"
         )
 
         # Generar URL de autorización
