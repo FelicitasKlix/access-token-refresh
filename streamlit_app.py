@@ -57,7 +57,9 @@ def create_calendar_event(reminder_date, calendar_ids):
             "auth_uri": st.secrets["calendar_api"]["auth_uri"],
             "token_uri": st.secrets["calendar_api"]["token_uri"],
             "auth_provider_x509_cert_url": st.secrets["calendar_api"]["auth_provider_x509_cert_url"],
-            "client_secret": st.secrets["calendar_api"]["client_secret"]
+            "client_secret": st.secrets["calendar_api"]["client_secret"],
+            "redirect_uris": ["https://meta-access-token-refresh.streamlit.app/_oauth-callback"],
+            "javascript_origins": ["https://meta-access-token-refresh.streamlit.app"]
         }
     }
 
@@ -68,11 +70,11 @@ def create_calendar_event(reminder_date, calendar_ids):
 
         SCOPES = ['https://www.googleapis.com/auth/calendar']
         
-        # Usar Flow en lugar de InstalledAppFlow
+        # Usar Flow con la URL de redirección correcta
         flow = Flow.from_client_secrets_file(
             temp.name,
             scopes=SCOPES,
-            redirect_uri='https://meta-access-token-refresh.streamlit.app/'  # Ajusta esta URL
+            redirect_uri='https://meta-access-token-refresh.streamlit.app/_oauth-callback'
         )
 
         # Generar URL de autorización
