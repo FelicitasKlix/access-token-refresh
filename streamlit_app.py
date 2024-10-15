@@ -22,27 +22,56 @@ def load_gcp_credentials():
     return credentials
 
 # Función para actualizar variables de entorno en Cloud Function
-def update_function_env_var_gen2(project_id, location, function_name, env_vars):
+def update_function_env_var_gen2(project_id, location, function_names, env_vars):
     credentials = load_gcp_credentials()
     client = functions_v2.FunctionServiceClient(credentials=credentials)
     
-    function_path = f"projects/{project_id}/locations/{location}/functions/{function_name}"
+    results = []
     
-    try:
-        function = client.get_function(name=function_path)
-        if not function.service_config.environment_variables:
-            function.service_config.environment_variables = {}
-        function.service_config.environment_variables.update(env_vars)
+    if isinstance(function_names, str):
+        function_names = [function_names]
+    
+    for function_name in function_names:
+        function_path = f"projects/{project_id}/locations/{location}/functions/{function_name}"
         
-        update_mask = {"paths": ["service_config.environment_variables"]}
-        operation = client.update_function(
-            function=function,
-            update_mask=update_mask
-        )
-        updated_function = operation.result()
-        return True, "Función actualizada exitosamente"
-    except Exception as e:
-        return False, f"Error al actualizar la función: {str(e)}"
+        try:
+            function = client.get_function(name=function_path)
+            if not function.service_config.environment_variables:
+                function.service_config.environment_variables = {}
+            function.service_config.environment_variables.update(env_vars)
+            
+            update_mask = {"paths": ["service_config.environment_variables"]}
+            operation = client.update_function(
+                function=function,
+                update_mask=update_mask
+            )
+            updated_function = operation.result()
+            results.append((True, f"Función {function_name} actualizada exitosamente"))
+        except Exception as e:
+            results.append((False, f"Error al actualizar la función {function_name}: {str(e)}"))
+    
+    return results
+# def update_function_env_var_gen2(project_id, location, function_name, env_vars):
+#     credentials = load_gcp_credentials()
+#     client = functions_v2.FunctionServiceClient(credentials=credentials)
+    
+#     function_path = f"projects/{project_id}/locations/{location}/functions/{function_name}"
+    
+#     try:
+#         function = client.get_function(name=function_path)
+#         if not function.service_config.environment_variables:
+#             function.service_config.environment_variables = {}
+#         function.service_config.environment_variables.update(env_vars)
+        
+#         update_mask = {"paths": ["service_config.environment_variables"]}
+#         operation = client.update_function(
+#             function=function,
+#             update_mask=update_mask
+#         )
+#         updated_function = operation.result()
+#         return True, "Función actualizada exitosamente"
+#     except Exception as e:
+#         return False, f"Error al actualizar la función: {str(e)}"
 
 def create_calendar_event(reminder_date, calendar_ids):
     # Verificar si ya tenemos credenciales en la sesión
@@ -79,6 +108,7 @@ def create_calendar_event(reminder_date, calendar_ids):
 
         # Verificar si tenemos un código en la URL
         query_params = st.experimental_get_query_params()
+        #query_params = st.query_params()
         if "code" in query_params:
             try:
                 flow.fetch_token(code=query_params["code"][0])
@@ -103,7 +133,7 @@ def create_calendar_event(reminder_date, calendar_ids):
 
             # Usar las credenciales para crear el servicio
             #service = build('calendar', 'v3', credentials=creds)
-            
+
             # Crear el evento
             year = reminder_date.year
             month = reminder_date.month
@@ -192,30 +222,59 @@ if selected_app:
                     reminder_date = expiry_date - timedelta(days=1)
                     
                     # Actualizar Cloud Function
-                    success, message = update_function_env_var_gen2(
+                    # Update Cloud Function(s)
+                    function_names = app_config["function_name"]
+                    results = update_function_env_var_gen2(
                         project_id="analytix-313619",
                         location="us-central1",
-                        function_name=app_config["function_name"],
+                        function_names=function_names,
                         env_vars={"LONG_LIVED_TOKEN": new_token}
                     )
+                    # Display results
+                    st.subheader("Resumen de la operación")
+                    st.write(f"**Nuevo token expira el:** {expiry_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                    st.write(f"**Recordatorio programado para:** {reminder_date.strftime('%Y-%m-%d %H:%M:%S')}")
                     
-                    if success:
-                        st.success("Token actualizado en Cloud Function")
-                        
-                        # Crear eventos en calendario
-                        calendar_ids = ['felicitas@bullmetrix.com', 'data@bullmetrix.com']
-                        calendar_results = create_calendar_event(reminder_date, calendar_ids)
-                        
-                        # Mostrar resumen
-                        st.subheader("Resumen de la operación")
-                        st.write(f"**Nuevo token expira el:** {expiry_date.strftime('%Y-%m-%d %H:%M:%S')}")
-                        st.write(f"**Recordatorio programado para:** {reminder_date.strftime('%Y-%m-%d %H:%M:%S')}")
-                        
-                        for result in calendar_results:
-                            st.write(result)
-                    else:
-                        st.error(message)
+                    for success, message in results:
+                        if success:
+                            st.success(message)
+                        else:
+                            st.error(message)
+                    
+                    # Create calendar events
+                    #calendar_ids = ['felicitas@bullmetrix.com', 'data@bullmetrix.com']
+                    #calendar_results = create_calendar_event(reminder_date, calendar_ids)
+                    
+                    #for result in calendar_results:
+                        #st.write(result)
                 else:
                     st.error("Error al obtener el nuevo token de Facebook")
         else:
             st.warning("Por favor, ingresa el token actual")
+                    # success, message = update_function_env_var_gen2(
+                    #     project_id="analytix-313619",
+                    #     location="us-central1",
+                    #     function_name=app_config["function_name"],
+                    #     env_vars={"LONG_LIVED_TOKEN": new_token}
+                    # )
+                    
+        #             if success:
+        #                 st.success("Token actualizado en Cloud Function")
+                        
+        #                 # Crear eventos en calendario
+        #                 calendar_ids = ['felicitas@bullmetrix.com', 'data@bullmetrix.com']
+        #                 calendar_results = create_calendar_event(reminder_date, calendar_ids)
+                        
+        #                 # Mostrar resumen
+        #                 st.subheader("Resumen de la operación")
+        #                 st.write(f"**Nuevo token expira el:** {expiry_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        #                 st.write(f"**Recordatorio programado para:** {reminder_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                        
+        #                 for result in calendar_results:
+        #                     st.write(result)
+        #             else:
+        #                 st.error(message)
+        #         else:
+        #             st.error("Error al obtener el nuevo token de Facebook")
+        # else:
+        #     st.warning("Por favor, ingresa el token actual")
